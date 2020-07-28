@@ -1,0 +1,6 @@
+# does not consider working directory
+.tmp_sim
+.tmp_cov
+.tmp_lint
+# cache files
+.DS_Store
