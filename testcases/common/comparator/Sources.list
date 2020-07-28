@@ -1,0 +1,5 @@
+tb.sv
+/designs/common/comparator
+
+COV_MODULES=comp_eq comp_lt comp_gt
+SIM_FLAGS = -gspecify -PARAM tb.TCLK=25
