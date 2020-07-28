@@ -2,6 +2,7 @@
 .tmp_sim
 .tmp_cov
 .tmp_lint
+.tmp_report
 # cache files
 .DS_Store
 # gtkwave view
