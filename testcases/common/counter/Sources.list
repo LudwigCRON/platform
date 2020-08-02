@@ -1,0 +1,5 @@
+tb.sv
+gray_count.v
+/designs/common/counter
+
+SIM_FLAGS+=-gassertions
