@@ -1,3 +1,4 @@
+`default_nettype none
 
 module adder_cla #(
     parameter integer N = 4

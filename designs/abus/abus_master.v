@@ -1,3 +1,4 @@
+`default_nettype none
 
 module abus_master #(
     parameter integer ADDR_WIDTH = 16,
@@ -14,7 +15,7 @@ module abus_master #(
     input   wire    [DATA_WIDTH-1:0]    wdata,
 
     output  reg     [DATA_WIDTH-1:0]    rdata,
-    output  wire                        new_data,
+    output  wire                        new_rdata,
     output  reg                         done,
     output  reg                         err,
 
@@ -35,7 +36,7 @@ module abus_master #(
     output  reg     [DATA_WIDTH-1:0]    abus_mwdata
 );
 
-    `include "abus/abus_encoding.vh"
+    `include "designs/abus/abus_encoding.vh"
 
     reg [1:0] current_state;
     reg [1:0] next_state;
@@ -60,7 +61,7 @@ module abus_master #(
     end
 
     // ======== bus driver ========
-    not g_rq (abus_req  , current_state == S_IDLE)
+    not g_rq (abus_req  , current_state == S_IDLE);
     buf g_we (abus_write, current_state == S_WRITE);
     buf g_re (abus_read , current_state == S_READ);
     buf g_ab (abus_abort, current_state == S_ABORT);
@@ -86,5 +87,7 @@ module abus_master #(
     always @(posedge abus_clk)
         if (~abus_req && abus_ack && current_state == S_READ)
             rdata <= abus_mrdata;
+
+    `include "designs/abus/abus_helper.vh"
 
 endmodule

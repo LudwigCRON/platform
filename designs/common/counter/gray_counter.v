@@ -1,3 +1,4 @@
+`default_nettype none
 
 module gray_counter #(
     parameter integer N = 4

@@ -31,6 +31,7 @@ module tb;
             run_check = 1'b1;
             #(1ns);
         end
+        `log_Terminate;
     end
 
     //======== comp_* ========

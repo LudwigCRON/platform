@@ -1,3 +1,4 @@
+`default_nettype none
 
 module comp_eq #(
     parameter integer N = 4
