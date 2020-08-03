@@ -3,3 +3,5 @@ abus_master.v
 abus_arbiter.v:
     abus_rr.v:
         /designs/common/adder/adder_cla/
+    abus_lf.v:
+        /designs/common/adder/adder_cla/
