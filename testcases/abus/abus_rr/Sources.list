@@ -1,0 +1,4 @@
+tb.sv
+/designs/abus/
+
+SIM_FLAGS+=-m/Users/ludwigcron/projects/electronic/platform/models/vpi/tasks.vpi
