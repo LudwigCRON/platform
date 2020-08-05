@@ -1,66 +1,95 @@
 `default_nettype none
 
 module abus_arbiter #(
-    parameter integer NB_MASTER  =  1,
+    parameter integer NB_MASTER  =  2,
     parameter integer NB_SLAVE   =  1,
     parameter integer ADDR_WIDTH = 16,
     parameter integer DATA_WIDTH = 16,
     parameter integer SCHEDULER  =  0
 ) (
-    input   wire                                bus_clk,
-    input   wire                                bus_rstb,
+    input   wire                                abus_clk,
+    input   wire                                abus_rstb,
 
     // ==== from bus masters ====
-    input   wire    [NB_MASTER-1:0]             bus_mvalid,
-    input   wire    [3*NB_MASTER-1:0]           bus_mid,
-    input   wire    [NB_MASTER*ADDR_WIDTH-1:0]  bus_maddress,
-    input   wire    [NB_MASTER*DATA_WIDTH-1:0]  bus_mwdata,
+    input   wire    [3*NB_MASTER-1:0]           abus_mid,
+    input   wire    [NB_MASTER-1:0]             abus_mreq,
+    input   wire    [NB_MASTER-1:0]             abus_mwrite,
+    input   wire    [NB_MASTER-1:0]             abus_mread,
+    input   wire    [NB_MASTER-1:0]             abus_mabort,
+    input   wire    [NB_MASTER*DATA_WIDTH-1:0]  abus_mwdata,
+    input   wire    [NB_MASTER*ADDR_WIDTH-1:0]  abus_maddress,
 
     // ==== to bus masters ====
-    output  wire    [3*NB_MASTER-1:0]           bus_mbid,
-    output  wire    [DATA_WIDTH-1:0]            bus_mrdata, 
-
-    // ==== to bus slaves ====
-    output   wire                               bus_svalid,
-    output   wire    [ADDR_WIDTH-1:0]           bus_saddress,
-    output   wire    [DATA_WIDTH-1:0]           bus_swdata,
+    output  wire                                abus_mack,
+    output  wire    [NB_MASTER-1:0]             abus_mgrant,
+    output  wire    [DATA_WIDTH-1:0]            abus_mrdata, 
 
     // ==== from bus slaves ====
-    input   wire    [NB_SLAVE-1:0]              bus_sready,
-    input   wire    [$clog2(DATA_WIDTH+1)-1:0]  bus_sstrb,
-    input   wire    [$clog2(DATA_WIDTH+1)-1:0]  bus_skeep
+    input   wire    [NB_SLAVE-1:0]              abus_sack,
+    input   wire    [NB_SLAVE*DATA_WIDTH-1:0]   abus_srdata,
+    input   wire    [$clog2(DATA_WIDTH+1)-1:0]  abus_sstrb,
+    input   wire    [$clog2(DATA_WIDTH+1)-1:0]  abus_skeep,
+
+    // ==== to bus slaves ====
+    output  wire    [2:0]                       abus_smid,
+    output  wire                                abus_sreq,
+    output  wire                                abus_swrite,
+    output  wire                                abus_sread,
+    output  wire                                abus_sabort,
+    output  wire    [ADDR_WIDTH-1:0]            abus_saddress,
+    output  wire    [DATA_WIDTH-1:0]            abus_swdata
 );
+
+    `include "designs/abus/abus_functions.vh"
 
     // ======== scheduler selection ========
     generate
         // ==== round robin ====
         if (SCHEDULER == 0)
         begin
-            
+            reg [NB_MASTER-1:0] prio;
+
+            abus_rr #(
+                .N      (NB_MASTER)
+            ) prio_resolver (
+                .prio   (prio),
+                .req    (abus_mreq),
+                .grant  (abus_mgrant)
+            );
+
+            always @(posedge abus_clk, negedge abus_rstb)
+            begin
+                if (!abus_rstb)
+                    prio <= {NB_MASTER{1'b1}};
+                else if (~abus_sreq & (|abus_sack))
+                    prio <= {abus_mgrant[NB_MASTER-2:0], 1'b0};
+            end
+        // ==== lowest first ==== 
+        end else if (SCHEDULER == 1)
+        begin
+            abus_lf #(
+                .N      (NB_MASTER)
+            ) prio_resolver (
+                .req    (abus_mreq),
+                .grant  (abus_mgrant)
+            );
         end
     endgenerate
 
-    localparam [3*NB_MASTER-1:0] id_selector = {(NB_MASTER){3'b001}};
+    // ======== selection master -> slave ========
+    assign abus_sreq     = |abus_mreq;
+    assign abus_smid     = pick_3nbm(abus_mgrant, abus_mid);
+    assign abus_sread    = pick_nbm( abus_mgrant, abus_mread);
+    assign abus_swrite   = pick_nbm( abus_mgrant, abus_mwrite);
+    assign abus_sabort   = pick_nbm( abus_mgrant, abus_mabort);
+    assign abus_swdata   = pick_dnbm(abus_mgrant, abus_mwdata);
+    assign abus_saddress = pick_anbm(abus_mgrant, abus_maddress);
+
+    // ======== selection master <- slave ========
+    assign abus_mack     = |abus_sack;
+    assign abus_mrdata   = pick_dnbs(abus_sack, abus_srdata);
+
 
     // ======== arbitration on mid ========
-    assign bus_mbid[0] = &pick_3nbm(id_selector, bus_mid);
-    assign bus_mbid[1] = &pick_3nbm(id_selector << 1, bus_mid);
-    assign bus_mbid[2] = &pick_3nbm(id_selector << 2, bus_mid);
-
-    function automatic [NB_MASTER-1:0] pick_3nbm(
-        input [3*NB_MASTER-1:0] selector,
-        input [3*NB_MASTER-1:0] data
-    );
-        integer i = 0;
-        integer j = 0;
-        for(i = 0; i < 3*NB_MASTER; i = i + 1)
-        begin
-            if (selector[i])
-            begin
-                pick_3nbm[j] = data[i];
-                j = j + 1;
-            end
-        end
-    endfunction
 
 endmodule

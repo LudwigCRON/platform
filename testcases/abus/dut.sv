@@ -1,46 +1,61 @@
 `timescale 1ns/100ps
 
 module dut #(
-    parameter integer NB_MASTER  = 1,
-    parameter integer NB_SLAVE   = 1,
+    parameter integer NB_MASTER  =  2,
+    parameter integer NB_SLAVE   =  1,
     parameter integer ADDR_WIDTH = 16,
     parameter integer DATA_WIDTH = 16,
+    parameter integer SCHEDULER  =  0,
     parameter integer PERIOD     = 40
 ) ();
 
     // ======== masters ========
-    reg                         abus_clk;
-    reg                         abus_rstb;
-    wire                        write;
-    wire                        read;
-    wire                        abort;
-    wire    [ADDR_WIDTH-1:0]    address;
-    wire    [DATA_WIDTH-1:0]    wdata;
-    reg     [DATA_WIDTH-1:0]    rdata;
-    wire                        new_rdata;
-    reg                         done;
-    reg                         err;
+    reg                                 abus_clk;
+    reg                                 abus_rstb;
+    wire    [NB_MASTER-1:0]             write       = 0;
+    wire    [NB_MASTER-1:0]             read        = 0;
+    wire    [NB_MASTER-1:0]             abort       = 0;
+    wire    [NB_MASTER*ADDR_WIDTH-1:0]  address     = 0;
+    wire    [NB_MASTER*DATA_WIDTH-1:0]  wdata       = 0;
+    wire    [NB_MASTER*DATA_WIDTH-1:0]  rdata;
+    wire    [NB_MASTER-1:0]             new_rdata;
+    wire    [NB_MASTER-1:0]             done;
+    wire    [NB_MASTER-1:0]             err;
 
     // ==== handshake mechanism ====
-    wire                        abus_ack;
-    wire                        abus_req;
+    wire                                abus_mack;
+    wire    [NB_MASTER-1:0]             abus_mreq;
 
     // ==== arbitration ====
-    wire    [2:0]               abus_mid;
-    wire                        abus_mgrant;
+    wire    [3*NB_MASTER-1:0]           abus_mid;
+    wire    [NB_MASTER-1:0]             abus_mgrant;
 
     // ==== data transmission ====
-    wire                        abus_write;
-    wire                        abus_read;
-    wire                        abus_abort;
-    wire    [DATA_WIDTH-1:0]    abus_mrdata;
-    reg     [ADDR_WIDTH-1:0]    abus_maddress;
-    reg     [DATA_WIDTH-1:0]    abus_mwdata;
+    wire    [NB_MASTER-1:0]             abus_mwrite;
+    wire    [NB_MASTER-1:0]             abus_mread;
+    wire    [NB_MASTER-1:0]             abus_mabort;
+    wire    [DATA_WIDTH-1:0]            abus_mrdata;
+    wire    [NB_MASTER*ADDR_WIDTH-1:0]  abus_maddress;
+    wire    [NB_MASTER*DATA_WIDTH-1:0]  abus_mwdata;
+
+    wire    [NB_SLAVE-1:0]              abus_sack;
+    wire    [NB_SLAVE*DATA_WIDTH-1:0]   abus_srdata;
+    wire    [$clog2(DATA_WIDTH+1)-1:0]  abus_sstrb;
+    wire    [$clog2(DATA_WIDTH+1)-1:0]  abus_skeep;
+
+    wire    [2:0]                       abus_smid;
+    wire                                abus_sreq;
+    wire                                abus_swrite;
+    wire                                abus_sread;
+    wire                                abus_sabort;
+    wire    [ADDR_WIDTH-1:0]            abus_saddress;
+    wire    [DATA_WIDTH-1:0]            abus_swdata;
 
     abus_master #(
         .ADDR_WIDTH(ADDR_WIDTH),
-        .DATA_WIDTH(DATA_WIDTH)
-    ) master (
+        .DATA_WIDTH(DATA_WIDTH),
+        .MASTER_ID ({3'h2, 3'h1})
+    ) masters[NB_MASTER-1:0] (
         .abus_clk       (abus_clk),
         .abus_rstb      (abus_rstb),
         .write          (write),
@@ -52,23 +67,61 @@ module dut #(
         .new_rdata      (new_rdata),
         .done           (done),
         .err            (err),
-        .abus_ack       (abus_ack),
-        .abus_req       (abus_req),
+        .abus_mack      (abus_mack),
+        .abus_mreq      (abus_mreq),
         .abus_mid       (abus_mid),
         .abus_mgrant    (abus_mgrant),
-        .abus_write     (abus_write),
-        .abus_read      (abus_read),
-        .abus_abort     (abus_abort),
+        .abus_mwrite    (abus_mwrite),
+        .abus_mread     (abus_mread),
+        .abus_mabort    (abus_mabort),
         .abus_mrdata    (abus_mrdata),
         .abus_maddress  (abus_maddress),
         .abus_mwdata    (abus_mwdata)
     );
 
+    abus_arbiter #(
+        .NB_MASTER  (NB_MASTER),
+        .NB_SLAVE   (NB_SLAVE),
+        .ADDR_WIDTH (ADDR_WIDTH),
+        .DATA_WIDTH (DATA_WIDTH),
+        .SCHEDULER  (SCHEDULER)
+    ) arbiter (
+        .abus_clk       (abus_clk),
+        .abus_rstb      (abus_rstb),
+        // ==== from bus masters ====
+        .abus_mid       (abus_mid),
+        .abus_mreq      (abus_mreq),
+        .abus_mwrite    (abus_mwrite),
+        .abus_mread     (abus_mread),
+        .abus_mabort    (abus_mabort),
+        .abus_mwdata    (abus_mwdata),
+        .abus_maddress  (abus_maddress),
+        // ==== to bus masters ====
+        .abus_mack      (abus_mack),
+        .abus_mgrant    (abus_mgrant),
+        .abus_mrdata    (abus_mrdata), 
+        // ==== from bus slaves ====
+        .abus_sack      (abus_sack),
+        .abus_srdata    (abus_srdata),
+        .abus_sstrb     (abus_sstrb),
+        .abus_skeep     (abus_skeep),
+        // ==== to bus slaves ====
+        .abus_smid      (abus_smid),
+        .abus_sreq      (abus_sreq),
+        .abus_swrite    (abus_swrite),
+        .abus_sread     (abus_sread),
+        .abus_sabort    (abus_sabort),
+        .abus_saddress  (abus_saddress),
+        .abus_swdata    (abus_swdata)
+    );
+
     initial begin
         $dumpvars();
         abus_clk = 1'b0;
+        abus_rstb = 1'b0;
         #(50ns);
-        master.WriteWord(16'h0100, 16'hCAFE);
+        abus_rstb = 1'b1;
+        masters[0].WriteWord(16'h0100, 16'hCAFE);
     end
 
     always forever begin
