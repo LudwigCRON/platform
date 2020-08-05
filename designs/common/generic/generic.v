@@ -46,7 +46,7 @@ module clock_mux #(
     input   wire [N-1:0]    clk,
     input   wire [N-1:0]    rstb,
     input   wire [N-1:0]    select,
-    output  wire            selected_clk
+    output  wire            q
 );
 
     wire [N-1:0] select_o;
@@ -78,5 +78,5 @@ module clock_mux #(
             if (!clk[gi]) select_fo <= select_o;
     end
 
-    assign selected_clk = |(select_fo & clk);
+    assign q = |(select_fo & clk);
 endmodule
