@@ -16,8 +16,13 @@ module adder_cla #(
 
     // ==== addition ====
     xor g_pi[N-1:0] (p, a, b);
-    xor g_s[N-1:0]  (s, p, {c[N-2:0], ci});
     and g_g[N-1:0]  (g, a, b);
+    generate
+        if (N == 1)
+            xor g_s  (s, p, ci);
+        else
+            xor g_s[N-1:0]  (s, p, {c[N-2:0], ci});
+    endgenerate
 
     // ==== carry tree ====
     wire [N:0] g_w;
