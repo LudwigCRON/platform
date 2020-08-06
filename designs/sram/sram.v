@@ -12,6 +12,7 @@ module sram #(
     input  wire                             abus_rstb, 
 
     // ==== from bus_arbiter ====
+    input  wire                             abus_sreq,
     input  wire                             abus_swrite,
     input  wire                             abus_sread,
     input  wire                             abus_sabort,
@@ -27,71 +28,128 @@ module sram #(
 
     `include "designs/sram/sram_encoding.vh"
 
-    localparam integer CNT_SIZE = $clog2(WAIT_STATE+1);
+    localparam integer CNT_SIZE    = $clog2(WAIT_STATE+1);
+    localparam integer CNT_ONE     = 1;
+    localparam integer FINAL_ADDR  = START_ADDR + SIZE;
+    localparam integer START_ADDRB = ~START_ADDR;
 
     reg           [1:0] current_state;
     
     reg  [CNT_SIZE-1:0] counter;
     wire [CNT_SIZE-1:0] next_counter;
-    wire                counter_eq0;
+    wire                counter_le1;
+    wire                counter_gt1;
     wire                counter_init;
 
     wire [DATA_WIDTH-1:0] data;
+    wire [1:0]          addr_range;
+    wire                addr_in_range;
+    wire [ADDR_WIDTH-1:0] address;
 
     // ======== bus interface ========
+    comp_lt #(
+        .N      (ADDR_WIDTH)
+    ) addr_low (
+        .a      (abus_saddress),
+        .b      (START_ADDR[ADDR_WIDTH-1:0]),
+        .a_lt_b (addr_range[0])
+    );
 
+    comp_lt #(
+        .N      (ADDR_WIDTH)
+    ) addr_high (
+        .a      (abus_saddress),
+        .b      (FINAL_ADDR[ADDR_WIDTH-1:0]),
+        .a_lt_b (addr_range[1])
+    );
+
+    assign addr_in_range = addr_range[1] & ~addr_range[0];
+
+    adder_cla #(
+        .N      (ADDR_WIDTH)
+    ) phy_addr (
+        .a      (abus_saddress),
+        .b      (START_ADDRB[ADDR_WIDTH-1:0]),
+        .ci     (1'b1),
+        .s      (address),
+        .co     ()
+    );
 
     // ======== finite state machine ========
-    sram_fsm fsm (
+    sram_fsm #(
+        .WAIT_STATE         (WAIT_STATE)    
+    ) fsm (
         .abus_clk           (abus_clk),
         .abus_rstb          (abus_rstb),
-        .abus_swrite        (abus_swrite),
-        .abus_sread         (abus_sread),
-        .abus_sabort        (abus_sabort),
-        .counter_eq0        (counter_eq0),
+        .abus_sreq          (abus_sreq),
+        .addr_in_range      (addr_in_range),
+        .counter_le1        (counter_le1),
         .counter_init       (counter_init),
         .current_state      (current_state)
     );
 
     // ======== counter ========
-    always @(posedge abus_clk)
-    begin
-        if (counter_init)
-            counter <= WAIT_STATE;
-        else if (~counter_eq0)
-            counter <= next_counter;
-    end
+    generate
+        if (CNT_SIZE > 1)
+        begin
+            always @(posedge abus_clk)
+            begin
+                if (counter_init)
+                    counter <= WAIT_STATE;
+                else if (counter_gt1)
+                    counter <= next_counter;
+            end
 
-    adder_cla #(
-        .N  (CNT_SIZE)
-    ) sub (
-        .a  (counter),
-        .b  ({CNT_SIZE{1'b1}}),
-        .ci (1'b0),
-        .s  (next_counter),
-        .co ()
-    );
+            adder_cla #(
+                .N  (CNT_SIZE)
+            ) sub (
+                .a  (counter),
+                .b  ({CNT_SIZE{1'b1}}),
+                .ci (1'b0),
+                .s  (next_counter),
+                .co ()
+            );
 
-    assign counter_eq0 = ~|counter;
+            comp_gt #(
+                .N      (CNT_SIZE)
+            ) limit (
+                .a      (counter),
+                .b      (CNT_ONE[CNT_SIZE-1:0]),
+                .a_gt_b (counter_gt1)
+            );
+
+            assign counter_le1 = ~counter_gt1 & abus_sreq;
+        end else if (CNT_SIZE == 1)
+        begin
+            always @(posedge abus_clk)
+                counter <= counter_init && (current_state == S_IDLE);
+            
+            assign counter_gt1 = ~counter;
+            assign counter_le1 =  counter;
+        end else
+        begin
+            assign counter_gt1 = 1'b0;
+            assign counter_le1 = 1'b1;
+        end
+    endgenerate
 
     // ======== memory bloc ========
     gsram #(
-        .START_ADDR     (START_ADDR),
         .SIZE           (SIZE),
         .ADDR_WIDTH     (ADDR_WIDTH),
         .DATA_WIDTH     (DATA_WIDTH),
-        .WAIT_TIME      (20)
+        .WAIT_TIME      (30)
     ) ram (
-        .read           (abus_sread),
-        .write          (abus_swrite),
-        .address        (abus_saddress),
+        .read           (abus_sread & addr_in_range),
+        .write          (abus_swrite & addr_in_range),
+        .address        (address),
         .data           (data)
     );
 
     assign data = (abus_swrite) ? abus_swdata : {DATA_WIDTH{1'bz}};
     assign abus_srdata =  (abus_sread) ? data : {DATA_WIDTH{1'bz}};
 
-    assign abus_sack = counter_eq0;
+    assign abus_sack = (current_state == S_SAMPLE);
 
     function automatic integer min(
         input integer a,

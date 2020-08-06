@@ -2,7 +2,6 @@
 `default_nettype none
 
 module gsram #(
-    parameter integer START_ADDR = 0,
     parameter integer SIZE       = 2**8,
     parameter integer ADDR_WIDTH = 16,
     parameter integer DATA_WIDTH = 16,
@@ -30,12 +29,17 @@ module gsram #(
     wire transaction_startd;
     wire transaction_pulse;
     wire data_ready;
+    wire data_readyd;
+    wire data_ready_pulse;
 
     assign        transaction_start = (read | write);
     assign #(1ns) transaction_startd = transaction_start;
     assign        transaction_pulse = transaction_start & ~transaction_startd;
 
-    assign #(WAIT_TIME * 1ns + 1ns) data_ready = transaction_pulse;
+
+    assign #(WAIT_TIME * 1ns + 1ns) data_ready = transaction_start;
+    assign #(1ns) data_readyd = data_ready;
+    assign data_ready_pulse = data_ready & ~data_readyd;
 
     // ======== finite state machine ========
     always @(*)
@@ -44,7 +48,7 @@ module gsram #(
             current_state <= S_IDLE;
         else if (transaction_pulse)
             current_state <= S_WAIT;
-        else if (data_ready)
+        else if (data_ready_pulse)
             current_state <= ( write && !read) ? S_WRITE :
                              (!write &&  read) ? S_READ  : current_state;
     end
@@ -53,8 +57,8 @@ module gsram #(
     always @(*)
     begin
         case (current_state)
-            S_WRITE: if (addr_in_range) mem[address - START_ADDR] = data;
-            S_READ : rdata = (addr_in_range) ? mem[address - START_ADDR] : {DATA_WIDTH{1'bz}};
+            S_WRITE: if (addr_in_range) mem[address] = data;
+            S_READ : rdata = (addr_in_range) ? mem[address] : {DATA_WIDTH{1'bz}};
             default: ;
         endcase
     end
@@ -62,6 +66,6 @@ module gsram #(
     assign data = (current_state == S_READ) ? rdata : {DATA_WIDTH{1'bz}};
 
     // ======== checks ========
-    assign addr_in_range = (address >= START_ADDR) && (address < (START_ADDR + SIZE));
+    assign addr_in_range = (address < SIZE);
 
 endmodule

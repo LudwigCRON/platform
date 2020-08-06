@@ -63,8 +63,8 @@ module abus_arbiter #(
             begin
                 if (!abus_rstb)
                     prio <= {NB_MASTER{1'b1}};
-                else if (~abus_sreq & (|abus_sack))
-                    prio <= {abus_mgrant[NB_MASTER-2:0], 1'b0};
+                else if (abus_sreq & (|abus_sack))
+                    prio <= {abus_mgrant[NB_MASTER-2:0], abus_mgrant[NB_MASTER-1]};
             end
         // ==== lowest first ==== 
         end else if (SCHEDULER == 1)

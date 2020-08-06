@@ -1,13 +1,14 @@
 
 `default_nettype none
 
-module sram_fsm (
+module sram_fsm #(
+    parameter integer WAIT_STATE = 2
+) (
     input   wire        abus_clk,
     input   wire        abus_rstb,
-    input   wire        abus_swrite,
-    input   wire        abus_sread,
-    input   wire        abus_sabort,
-    input   wire        counter_eq0,
+    input   wire        abus_sreq,
+    input   wire        addr_in_range,
+    input   wire        counter_le1,
     output  wire        counter_init,
     output  reg  [1:0]  current_state
 );
@@ -27,8 +28,9 @@ module sram_fsm (
     always @(*)
     begin
         case (current_state)
-            S_IDLE   : next_state = (abus_swrite || abus_sread) ? S_WAIT : S_IDLE;
-            S_WAIT   : next_state = (counter_eq0) ? S_SAMPLE : S_IDLE;
+            S_IDLE   : next_state = (abus_sreq && addr_in_range && WAIT_STATE > 0)  ? S_WAIT   :
+                                    (abus_sreq && addr_in_range && WAIT_STATE == 0) ? S_SAMPLE : S_IDLE;
+            S_WAIT   : next_state = (counter_le1) ? S_SAMPLE : S_WAIT;
             default  : next_state = S_IDLE ;
         endcase
     end

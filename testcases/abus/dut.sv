@@ -2,7 +2,7 @@
 
 module dut #(
     parameter integer NB_MASTER  =  2,
-    parameter integer NB_SLAVE   =  1,
+    parameter integer NB_SLAVE   =  3,
     parameter integer ADDR_WIDTH = 16,
     parameter integer DATA_WIDTH = 16,
     parameter integer SCHEDULER  =  0,
@@ -134,11 +134,12 @@ module dut #(
         .SIZE       (512),
         .ADDR_WIDTH (16),
         .DATA_WIDTH (16),
-        .WAIT_STATE (1)
-    ) sram (
+        .WAIT_STATE (0)
+    ) sram_fast (
         .abus_clk       (abus_clk),
         .abus_rstb      (abus_rstb), 
         // ==== from bus_arbiter ====
+        .abus_sreq      (abus_sreq),
         .abus_swrite    (abus_swrite),
         .abus_sread     (abus_sread),
         .abus_sabort    (abus_sabort),
@@ -147,8 +148,55 @@ module dut #(
         .abus_sstrb     (abus_sstrb),
         .abus_skeep     (abus_skeep),
         // ==== to bus_arbiter ====
-        .abus_sack      (abus_sack),
-        .abus_srdata    (abus_srdata)
+        .abus_sack      (abus_sack[0]),
+        .abus_srdata    (abus_srdata[0 +: DATA_WIDTH])
+    );
+
+    sram #(
+        .START_ADDR (512),
+        .SIZE       (512),
+        .ADDR_WIDTH (16),
+        .DATA_WIDTH (16),
+        .WAIT_STATE (1)
+    ) sram_medium (
+        .abus_clk       (abus_clk),
+        .abus_rstb      (abus_rstb), 
+        // ==== from bus_arbiter ====
+        .abus_sreq      (abus_sreq),
+        .abus_swrite    (abus_swrite),
+        .abus_sread     (abus_sread),
+        .abus_sabort    (abus_sabort),
+        .abus_saddress  (abus_saddress),
+        .abus_swdata    (abus_swdata),
+        .abus_sstrb     (abus_sstrb),
+        .abus_skeep     (abus_skeep),
+        // ==== to bus_arbiter ====
+        .abus_sack      (abus_sack[1]),
+        .abus_srdata    (abus_srdata[DATA_WIDTH +: DATA_WIDTH])
+    );
+
+
+    sram #(
+        .START_ADDR (1024),
+        .SIZE       (512),
+        .ADDR_WIDTH (16),
+        .DATA_WIDTH (16),
+        .WAIT_STATE (3)
+    ) sram_slow (
+        .abus_clk       (abus_clk),
+        .abus_rstb      (abus_rstb), 
+        // ==== from bus_arbiter ====
+        .abus_sreq      (abus_sreq),
+        .abus_swrite    (abus_swrite),
+        .abus_sread     (abus_sread),
+        .abus_sabort    (abus_sabort),
+        .abus_saddress  (abus_saddress),
+        .abus_swdata    (abus_swdata),
+        .abus_sstrb     (abus_sstrb),
+        .abus_skeep     (abus_skeep),
+        // ==== to bus_arbiter ====
+        .abus_sack      (abus_sack[2]),
+        .abus_srdata    (abus_srdata[2*DATA_WIDTH +: DATA_WIDTH])
     );
 
     initial begin
@@ -158,6 +206,23 @@ module dut #(
         #(50ns);
         abus_rstb = 1'b1;
         masters[0].WriteWord(16'h0100, 16'hCAFE);
+        masters[1].WriteWord(16'h0201, 16'hDEAD);
+        masters[0].WriteWord(16'h0302, 16'hBEEF);
+        masters[1].WriteWord(16'h0403, 16'h55AA);
+        masters[0].ReadWord(16'h0100);
+        if (masters[0].GetReadWord() !== 16'hCAFE)
+            `log_Error("Access to 16'h0100 failed");
+        masters[1].ReadWord(16'h0201);
+        if (masters[1].GetReadWord() !== 16'hDEAD)
+            `log_Error("Access to 16'h0201 failed");
+        masters[0].ReadWord(16'h0302);
+        if (masters[0].GetReadWord() !== 16'hBEEF)
+            `log_Error("Access to 16'h0302 failed");
+        masters[1].ReadWord(16'h0403);
+        if (masters[1].GetReadWord() !== 16'h55AA)
+            `log_Error("Access to 16'h0403 failed");
+        #(100ns);
+        `log_Terminate;
     end
 
     always forever begin
@@ -165,7 +230,7 @@ module dut #(
     end
 
     initial begin
-        #(1us);
+        #(2us);
         `log_Fatal("Unexpected timeout");
     end
 

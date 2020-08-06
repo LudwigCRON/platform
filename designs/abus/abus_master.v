@@ -57,7 +57,7 @@ module abus_master #(
         endcase
     end
 
-    always @(posedge abus_clk, negedge abus_rstb)
+    always @(negedge abus_clk, negedge abus_rstb)
     begin
         if (!abus_rstb)
             current_state <= S_IDLE;
@@ -90,12 +90,12 @@ module abus_master #(
         done <= abus_mreq && abus_mack && abus_mgrant && (current_state != S_IDLE);
 
     always @(posedge abus_clk)
-        err <= 1'b0; //abus_mreq && ~abus_mack && abus_mgrant && (current_state != S_IDLE);
+        err <= ~abus_mreq && abus_mack && abus_mgrant && (current_state != S_IDLE);
 
     and g_nr (new_rdata, done, current_state == S_READ);
 
     always @(posedge abus_clk)
-        if (~abus_mreq && abus_mack && current_state == S_READ)
+        if (abus_mreq && abus_mack && current_state == S_READ)
             rdata <= abus_mrdata;
 
     `include "designs/abus/abus_helper.vh"
