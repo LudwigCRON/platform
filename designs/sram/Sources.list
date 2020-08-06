@@ -1,0 +1,4 @@
+sram.v
+sram_fsm.v
+/designs/common/adder/adder_cla
+/models/memories/

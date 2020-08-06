@@ -5,36 +5,40 @@ module abus_master #(
     parameter integer DATA_WIDTH = 16,
     parameter [2:0]   MASTER_ID  =  0
 ) (
-    input   wire                        abus_clk,
-    input   wire                        abus_rstb,
+    input   wire                                abus_clk,
+    input   wire                                abus_rstb,
 
     // ==== orders ====
-    input   wire                        write,
-    input   wire                        read,
-    input   wire                        abort,
-    input   wire    [ADDR_WIDTH-1:0]    address,
-    input   wire    [DATA_WIDTH-1:0]    wdata,
+    input   wire                                write,
+    input   wire                                read,
+    input   wire                                abort,
+    input   wire    [$clog2(DATA_WIDTH+1)-1:0]  strb,
+    input   wire    [$clog2(DATA_WIDTH+1)-1:0]  keep,
+    input   wire    [DATA_WIDTH-1:0]            wdata,
+    input   wire    [ADDR_WIDTH-1:0]            address,
 
-    output  reg     [DATA_WIDTH-1:0]    rdata,
-    output  wire                        new_rdata,
-    output  reg                         done,
-    output  reg                         err,
+    output  reg     [DATA_WIDTH-1:0]            rdata,
+    output  wire                                new_rdata,
+    output  reg                                 done,
+    output  reg                                 err,
 
     // ==== handshake mechanism ====
-    input   wire                        abus_mack,
-    output  wire                        abus_mreq,
+    input   wire                                abus_mack,
+    output  wire                                abus_mreq,
 
     // ==== arbitration ====
-    output  wire    [2:0]               abus_mid,
-    input   wire                        abus_mgrant,
+    output  wire    [2:0]                       abus_mid,
+    input   wire                                abus_mgrant,
 
     // ==== data transmission ====
-    output  wire                        abus_mwrite,
-    output  wire                        abus_mread,
-    output  wire                        abus_mabort,
-    input   wire    [DATA_WIDTH-1:0]    abus_mrdata,
-    output  reg     [ADDR_WIDTH-1:0]    abus_maddress,
-    output  reg     [DATA_WIDTH-1:0]    abus_mwdata
+    output  wire                                abus_mwrite,
+    output  wire                                abus_mread,
+    output  wire                                abus_mabort,
+    input   wire    [DATA_WIDTH-1:0]            abus_mrdata,
+    output  reg     [$clog2(DATA_WIDTH+1)-1:0]  abus_mstrb,
+    output  reg     [$clog2(DATA_WIDTH+1)-1:0]  abus_mkeep,
+    output  reg     [DATA_WIDTH-1:0]            abus_mwdata,
+    output  reg     [ADDR_WIDTH-1:0]            abus_maddress
 );
 
     `include "designs/abus/abus_encoding.vh"
@@ -83,10 +87,10 @@ module abus_master #(
 
     // ======== flags to driver ========
     always @(posedge abus_clk)
-        done <= ~abus_mreq && abus_mack && abus_mgrant && (current_state != S_IDLE);
+        done <= abus_mreq && abus_mack && abus_mgrant && (current_state != S_IDLE);
 
     always @(posedge abus_clk)
-        err <= abus_mreq && ~abus_mack && abus_mgrant && (current_state != S_IDLE);
+        err <= 1'b0; //abus_mreq && ~abus_mack && abus_mgrant && (current_state != S_IDLE);
 
     and g_nr (new_rdata, done, current_state == S_READ);
 

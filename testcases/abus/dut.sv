@@ -9,6 +9,8 @@ module dut #(
     parameter integer PERIOD     = 40
 ) ();
 
+    localparam integer SK_SIZE = $clog2(DATA_WIDTH+1);
+
     // ======== masters ========
     reg                                 abus_clk;
     reg                                 abus_rstb;
@@ -18,6 +20,8 @@ module dut #(
     wire    [NB_MASTER*ADDR_WIDTH-1:0]  address     = 0;
     wire    [NB_MASTER*DATA_WIDTH-1:0]  wdata       = 0;
     wire    [NB_MASTER*DATA_WIDTH-1:0]  rdata;
+    wire    [NB_MASTER*SK_SIZE-1:0]     strb        = 0;
+    wire    [NB_MASTER*SK_SIZE-1:0]     keep        = 2**(NB_MASTER*SK_SIZE)-1;
     wire    [NB_MASTER-1:0]             new_rdata;
     wire    [NB_MASTER-1:0]             done;
     wire    [NB_MASTER-1:0]             err;
@@ -35,21 +39,23 @@ module dut #(
     wire    [NB_MASTER-1:0]             abus_mread;
     wire    [NB_MASTER-1:0]             abus_mabort;
     wire    [DATA_WIDTH-1:0]            abus_mrdata;
-    wire    [NB_MASTER*ADDR_WIDTH-1:0]  abus_maddress;
+    wire    [NB_MASTER*SK_SIZE-1:0]     abus_mstrb;
+    wire    [NB_MASTER*SK_SIZE-1:0]     abus_mkeep;
     wire    [NB_MASTER*DATA_WIDTH-1:0]  abus_mwdata;
+    wire    [NB_MASTER*ADDR_WIDTH-1:0]  abus_maddress;
 
     wire    [NB_SLAVE-1:0]              abus_sack;
     wire    [NB_SLAVE*DATA_WIDTH-1:0]   abus_srdata;
-    wire    [$clog2(DATA_WIDTH+1)-1:0]  abus_sstrb;
-    wire    [$clog2(DATA_WIDTH+1)-1:0]  abus_skeep;
 
     wire    [2:0]                       abus_smid;
     wire                                abus_sreq;
     wire                                abus_swrite;
     wire                                abus_sread;
     wire                                abus_sabort;
-    wire    [ADDR_WIDTH-1:0]            abus_saddress;
+    wire    [SK_SIZE-1:0]               abus_sstrb;
+    wire    [SK_SIZE-1:0]               abus_skeep;
     wire    [DATA_WIDTH-1:0]            abus_swdata;
+    wire    [ADDR_WIDTH-1:0]            abus_saddress;
 
     abus_master #(
         .ADDR_WIDTH(ADDR_WIDTH),
@@ -58,15 +64,19 @@ module dut #(
     ) masters[NB_MASTER-1:0] (
         .abus_clk       (abus_clk),
         .abus_rstb      (abus_rstb),
+        // ==== orders ====
         .write          (write),
         .read           (read),
         .abort          (abort),
         .address        (address),
         .wdata          (wdata),
         .rdata          (rdata),
+        .strb           (strb),
+        .keep           (keep),
         .new_rdata      (new_rdata),
         .done           (done),
         .err            (err),
+        // ==== to bus_arbiter ====
         .abus_mack      (abus_mack),
         .abus_mreq      (abus_mreq),
         .abus_mid       (abus_mid),
@@ -75,8 +85,10 @@ module dut #(
         .abus_mread     (abus_mread),
         .abus_mabort    (abus_mabort),
         .abus_mrdata    (abus_mrdata),
-        .abus_maddress  (abus_maddress),
-        .abus_mwdata    (abus_mwdata)
+        .abus_mstrb     (abus_mstrb),
+        .abus_mkeep     (abus_mkeep),
+        .abus_mwdata    (abus_mwdata),
+        .abus_maddress  (abus_maddress)
     );
 
     abus_arbiter #(
@@ -94,6 +106,8 @@ module dut #(
         .abus_mwrite    (abus_mwrite),
         .abus_mread     (abus_mread),
         .abus_mabort    (abus_mabort),
+        .abus_mstrb     (abus_mstrb),
+        .abus_mkeep     (abus_mkeep),
         .abus_mwdata    (abus_mwdata),
         .abus_maddress  (abus_maddress),
         // ==== to bus masters ====
@@ -103,16 +117,38 @@ module dut #(
         // ==== from bus slaves ====
         .abus_sack      (abus_sack),
         .abus_srdata    (abus_srdata),
-        .abus_sstrb     (abus_sstrb),
-        .abus_skeep     (abus_skeep),
         // ==== to bus slaves ====
         .abus_smid      (abus_smid),
         .abus_sreq      (abus_sreq),
         .abus_swrite    (abus_swrite),
         .abus_sread     (abus_sread),
         .abus_sabort    (abus_sabort),
+        .abus_sstrb     (abus_sstrb),
+        .abus_skeep     (abus_skeep),
+        .abus_swdata    (abus_swdata),
+        .abus_saddress  (abus_saddress)
+    );
+
+    sram #(
+        .START_ADDR (0),
+        .SIZE       (512),
+        .ADDR_WIDTH (16),
+        .DATA_WIDTH (16),
+        .WAIT_STATE (1)
+    ) sram (
+        .abus_clk       (abus_clk),
+        .abus_rstb      (abus_rstb), 
+        // ==== from bus_arbiter ====
+        .abus_swrite    (abus_swrite),
+        .abus_sread     (abus_sread),
+        .abus_sabort    (abus_sabort),
         .abus_saddress  (abus_saddress),
-        .abus_swdata    (abus_swdata)
+        .abus_swdata    (abus_swdata),
+        .abus_sstrb     (abus_sstrb),
+        .abus_skeep     (abus_skeep),
+        // ==== to bus_arbiter ====
+        .abus_sack      (abus_sack),
+        .abus_srdata    (abus_srdata)
     );
 
     initial begin

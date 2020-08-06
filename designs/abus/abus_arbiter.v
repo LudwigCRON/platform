@@ -7,37 +7,39 @@ module abus_arbiter #(
     parameter integer DATA_WIDTH = 16,
     parameter integer SCHEDULER  =  0
 ) (
-    input   wire                                abus_clk,
-    input   wire                                abus_rstb,
+    input   wire                                            abus_clk,
+    input   wire                                            abus_rstb,
 
     // ==== from bus masters ====
-    input   wire    [3*NB_MASTER-1:0]           abus_mid,
-    input   wire    [NB_MASTER-1:0]             abus_mreq,
-    input   wire    [NB_MASTER-1:0]             abus_mwrite,
-    input   wire    [NB_MASTER-1:0]             abus_mread,
-    input   wire    [NB_MASTER-1:0]             abus_mabort,
-    input   wire    [NB_MASTER*DATA_WIDTH-1:0]  abus_mwdata,
-    input   wire    [NB_MASTER*ADDR_WIDTH-1:0]  abus_maddress,
+    input   wire    [3*NB_MASTER-1:0]                       abus_mid,
+    input   wire    [NB_MASTER-1:0]                         abus_mreq,
+    input   wire    [NB_MASTER-1:0]                         abus_mwrite,
+    input   wire    [NB_MASTER-1:0]                         abus_mread,
+    input   wire    [NB_MASTER-1:0]                         abus_mabort,
+    input   wire    [NB_MASTER*$clog2(DATA_WIDTH+1)-1:0]    abus_mstrb,
+    input   wire    [NB_MASTER*$clog2(DATA_WIDTH+1)-1:0]    abus_mkeep,
+    input   wire    [NB_MASTER*DATA_WIDTH-1:0]              abus_mwdata,
+    input   wire    [NB_MASTER*ADDR_WIDTH-1:0]              abus_maddress,
 
     // ==== to bus masters ====
-    output  wire                                abus_mack,
-    output  wire    [NB_MASTER-1:0]             abus_mgrant,
-    output  wire    [DATA_WIDTH-1:0]            abus_mrdata, 
+    output  wire                                            abus_mack,
+    output  wire    [NB_MASTER-1:0]                         abus_mgrant,
+    output  wire    [DATA_WIDTH-1:0]                        abus_mrdata, 
 
     // ==== from bus slaves ====
-    input   wire    [NB_SLAVE-1:0]              abus_sack,
-    input   wire    [NB_SLAVE*DATA_WIDTH-1:0]   abus_srdata,
-    input   wire    [$clog2(DATA_WIDTH+1)-1:0]  abus_sstrb,
-    input   wire    [$clog2(DATA_WIDTH+1)-1:0]  abus_skeep,
+    input   wire    [NB_SLAVE-1:0]                          abus_sack,
+    input   wire    [NB_SLAVE*DATA_WIDTH-1:0]               abus_srdata,
 
     // ==== to bus slaves ====
-    output  wire    [2:0]                       abus_smid,
-    output  wire                                abus_sreq,
-    output  wire                                abus_swrite,
-    output  wire                                abus_sread,
-    output  wire                                abus_sabort,
-    output  wire    [ADDR_WIDTH-1:0]            abus_saddress,
-    output  wire    [DATA_WIDTH-1:0]            abus_swdata
+    output  wire    [2:0]                                   abus_smid,
+    output  wire                                            abus_sreq,
+    output  wire                                            abus_swrite,
+    output  wire                                            abus_sread,
+    output  wire                                            abus_sabort,
+    output  wire    [$clog2(DATA_WIDTH+1)-1:0]              abus_sstrb,
+    output  wire    [$clog2(DATA_WIDTH+1)-1:0]              abus_skeep,
+    output  wire    [ADDR_WIDTH-1:0]                        abus_saddress,
+    output  wire    [DATA_WIDTH-1:0]                        abus_swdata
 );
 
     `include "designs/abus/abus_functions.vh"
