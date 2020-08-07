@@ -1,0 +1,5 @@
+tb.sv
+dut.sv
+/designs/jtag/
+/designs/adc_sar/
+/designs/fcounter/

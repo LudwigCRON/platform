@@ -1,0 +1,6 @@
+adc_sar.v
+adc_sar_fsm.v
+adc_sar_reconstruction.v
+/designs/common/generic
+/designs/common/comparator
+/designs/common/adder/adder_cla
