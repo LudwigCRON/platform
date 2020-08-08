@@ -10,6 +10,7 @@ module sram #(
 ) (
     input  wire                             abus_clk,
     input  wire                             abus_rstb, 
+    input  wire                             chain_scanen,
 
     // ==== from bus_arbiter ====
     input  wire                             abus_sreq,
@@ -41,9 +42,13 @@ module sram #(
     wire                counter_gt1;
     wire                counter_init;
 
+    wire [1:0]            addr_range;
+    wire                  addr_in_range;
+    wire [ADDR_WIDTH-1:0] phy_address;
+
+    wire                  read;
+    wire                  write;
     wire [DATA_WIDTH-1:0] data;
-    wire [1:0]          addr_range;
-    wire                addr_in_range;
     wire [ADDR_WIDTH-1:0] address;
 
     // ======== bus interface ========
@@ -71,7 +76,7 @@ module sram #(
         .a      (abus_saddress),
         .b      (START_ADDRB[ADDR_WIDTH-1:0]),
         .ci     (1'b1),
-        .s      (address),
+        .s      (phy_address),
         .co     ()
     );
 
@@ -146,9 +151,25 @@ module sram #(
         .data           (data)
     );
 
-    assign data = (abus_swrite) ? abus_swdata : {DATA_WIDTH{1'bz}};
-    assign abus_srdata =  (abus_sread) ? data : {DATA_WIDTH{1'bz}};
+    aio_blk_latch #(
+        .N  (ADDR_WIDTH+DATA_WIDTH+2)
+    ) blk_latch (
+        .a  ({
+            abus_sread & addr_in_range,
+            abus_swrite & addr_in_range,
+            (abus_swrite) ? abus_swdata : {DATA_WIDTH{1'bz}},
+            phy_address
+        }),
+        .en (~chain_scanen),
+        .q  ({
+            read,
+            write,
+            data,
+            address
+        })
+    );
 
+    assign abus_srdata =  (abus_sread) ? data : {DATA_WIDTH{1'bz}};
     assign abus_sack = (current_state == S_SAMPLE);
 
     function automatic integer min(

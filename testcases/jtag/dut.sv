@@ -1,18 +1,20 @@
 `default_nettype none
 
 module dut (
-    input  wire tck,
-    input  wire trstb,
-    input  wire tdi,
-    input  wire tms,
-    output wire tdo,
+    input  wire         tck,
+    input  wire         trstb,
+    input  wire         tdi,
+    input  wire         tms,
+    output wire         tdo,
 
-    input  wire clk,
-    input  wire rstb,
+    input  wire         clk,
+    input  wire         rstb,
     
-    input  wire ms_adc_cmp,
-    input  wire ms_adc_rdy,
-    output wire ms_adc_clk
+    input  wire         ms_adc_cmp,
+    input  wire         ms_adc_rdy,
+    output wire         ms_adc_clk,
+    output wire         ms_adc_sample,
+    output wire [11:0]  ms_adc_dac
 );
 
     localparam integer N_CONF_ADC  = 4;
@@ -24,8 +26,11 @@ module dut (
     wire        update;
     wire        capture;
     wire [3:0]  select;
+    wire        chain_scanen;
 
     // ======== test controller ========
+
+    assign chain_scanen = 1'b0;
 
     /*
         0   --> top
@@ -205,6 +210,7 @@ module dut (
     ) adc (
         .clk            (clk),
         .rstb           (rstb),
+        .chain_scanen   (chain_scanen),
         .enable         (adc_conf[0]),
         .extra_sample   (adc_conf[1]),
         .soc            (),
@@ -213,7 +219,9 @@ module dut (
         .eoc_it         (),
         .dout           (),
         .ms_clk         (ms_adc_clk),
+        .ms_sample      (ms_adc_sample),
         .ms_rdy         (ms_adc_rdy),
+        .ms_dac         (ms_adc_dac),
         .ms_cmp         (ms_adc_cmp)
     );
 

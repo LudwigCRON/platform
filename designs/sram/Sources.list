@@ -1,5 +1,6 @@
 sram.v
 sram_fsm.v
-/designs/common/adder/adder_cla
+/designs/common/generic
 /designs/common/comparator
+/designs/common/adder/adder_cla
 /models/memories/

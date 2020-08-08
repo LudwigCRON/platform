@@ -14,6 +14,7 @@ module dut #(
     // ======== masters ========
     reg                                 abus_clk;
     reg                                 abus_rstb;
+    reg                                 chain_scanen;
     wire    [NB_MASTER-1:0]             write       = 0;
     wire    [NB_MASTER-1:0]             read        = 0;
     wire    [NB_MASTER-1:0]             abort       = 0;
@@ -137,7 +138,8 @@ module dut #(
         .WAIT_STATE (0)
     ) sram_fast (
         .abus_clk       (abus_clk),
-        .abus_rstb      (abus_rstb), 
+        .abus_rstb      (abus_rstb),
+        .chain_scanen   (chain_scanen),
         // ==== from bus_arbiter ====
         .abus_sreq      (abus_sreq),
         .abus_swrite    (abus_swrite),
@@ -160,7 +162,8 @@ module dut #(
         .WAIT_STATE (1)
     ) sram_medium (
         .abus_clk       (abus_clk),
-        .abus_rstb      (abus_rstb), 
+        .abus_rstb      (abus_rstb),
+        .chain_scanen   (chain_scanen),
         // ==== from bus_arbiter ====
         .abus_sreq      (abus_sreq),
         .abus_swrite    (abus_swrite),
@@ -185,6 +188,7 @@ module dut #(
     ) sram_slow (
         .abus_clk       (abus_clk),
         .abus_rstb      (abus_rstb), 
+        .chain_scanen   (chain_scanen),
         // ==== from bus_arbiter ====
         .abus_sreq      (abus_sreq),
         .abus_swrite    (abus_swrite),
@@ -203,6 +207,7 @@ module dut #(
         $dumpvars();
         abus_clk = 1'b0;
         abus_rstb = 1'b0;
+        chain_scanen = 1'b0;
         #(50ns);
         abus_rstb = 1'b1;
         masters[0].WriteWord(16'h0100, 16'hCAFE);

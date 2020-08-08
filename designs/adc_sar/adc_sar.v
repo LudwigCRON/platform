@@ -5,6 +5,7 @@ module adc_sar #(
 ) (
     input   wire            clk,
     input   wire            rstb,
+    input   wire            chain_scanen,
     // configuration
     input   wire            enable,
     input   wire            extra_sample,
@@ -17,6 +18,8 @@ module adc_sar #(
     // interface with analog
     input   wire            ms_rdy,
     input   wire            ms_cmp,
+    output  wire            ms_sample,
+    output  wire [N-1:0]    ms_dac,
     output  wire            ms_clk
 );
 
@@ -66,6 +69,20 @@ module adc_sar #(
     assign eoc = (current_state == S_IDLE);
     assign eoa = (current_state != S_SAMPLE) && (current_state != S_EXTRA_SAMPLE);
 
-    buf g_anaclk (ms_clk, clk);
+    aio_blk_latch #(
+        .N  (N+2)
+    ) blk_latch (
+        .a  ({
+            clk,
+            ~(eoa & ~eoc),
+            dout
+        }),
+        .en (~chain_scanen),
+        .q  ({
+            ms_clk,
+            ms_sample,
+            ms_dac
+        })
+    );
 
 endmodule

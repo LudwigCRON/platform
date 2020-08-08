@@ -80,3 +80,15 @@ module clock_mux #(
 
     assign q = |(select_fo & clk);
 endmodule
+
+module aio_blk_latch #(
+    parameter integer N = 4
+) (
+    input  wire [N-1:0] a,
+    input  wire         en,
+    output reg [N-1:0]  q
+);
+    always @(a, en)
+        if (en)
+            q <= a;
+endmodule
