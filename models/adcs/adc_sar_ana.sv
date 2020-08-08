@@ -1,6 +1,7 @@
 
 module adc_sar_ana #(
-    parameter integer N = 12
+    parameter integer N  = 12,
+    parameter real    fc = 50e6
 ) (
     input   real            VDDA,
     input   real            VSSA,
@@ -16,6 +17,8 @@ module adc_sar_ana #(
 
     real vin;
     real vdac;
+    real vdac_rc;
+    real rdy;
     
     always @(*)
         if (ms_sample)
@@ -24,11 +27,31 @@ module adc_sar_ana #(
     // resisitive divider or switched cap
     always @(ms_dac, VREF, VSSA)
         vdac = ms_dac * (VREF-VSSA)/2**N;
+    
+    rc_filter #(
+        .fc     (fc),
+        .gain   (1.0),
+        .dt     (1e-9)
+    ) dac (
+        .vin    (vdac),
+        .vout   (vdac_rc)
+    );
 
     // comparator
     always @(negedge ms_clk)
     begin
-        ms_cmp <= (vin > vdac);
+        ms_cmp <= (vin > vdac_rc);
     end
+
+    rc_filter #(
+        .fc     (10e6),
+        .gain   (1.0),
+        .dt     (8e-9)
+    ) ready (
+        .vin    (VDDA-VSSA),
+        .vout   (rdy)
+    );
+
+    assign ms_rdy = (rdy > (VDDA+VSSA) * 0.7) ? 1'b1 : 1'b0;
 
 endmodule

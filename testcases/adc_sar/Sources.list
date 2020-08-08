@@ -1,3 +1,4 @@
 tb.sv
 /designs/adc_sar
-/models/adcs/adc_sar.sv
+/models/adcs/adc_sar_ana.sv
+/models/filters/rc_filter.sv

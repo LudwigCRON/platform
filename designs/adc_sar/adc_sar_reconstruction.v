@@ -39,19 +39,19 @@ module adc_sar_reconstruction #(
         if (!rstb)
             dout <= {N{1'b0}};
         else if (reset)
-            dout <= IDEAL_WEIGHT;
+            dout <= {N{1'b0}};
         else
             dout <= next_dout;
     end
 
-    assign sweight = (cmp) ? ~weight : weight;
+    assign sweight = (!cmp) ? ~weight : weight;
 
     adder_cla #(
         .N  (N)
     ) next (
         .a  (dout),
         .b  (sweight),
-        .ci (cmp),
+        .ci (!cmp),
         .s  (next_dout),
         .co ()
     );
