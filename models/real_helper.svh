@@ -29,3 +29,12 @@ function automatic real clip(
     else if (a < min) clip = min;
     else clip = max;
 endfunction
+
+function automatic in_range(
+    input real a,
+    input real min,
+    input real max
+);
+    if (is_nan(a)) in_range = 1'b0;
+    else in_range = (min <= a && a <= max) ? 1'b1 : 1'b0;
+endfunction
