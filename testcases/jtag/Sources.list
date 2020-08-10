@@ -3,4 +3,4 @@ dut.sv
 /designs/jtag/
 /designs/adc_sar/
 /designs/fcounter/
-/models/adcs/adc_sar_ana.sv
+/models/adcs/adc_sar/generic/

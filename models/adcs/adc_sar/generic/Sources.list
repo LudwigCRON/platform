@@ -1,0 +1,2 @@
+adc_sar_ana.sv:
+    /models/filters/rc_filter.sv

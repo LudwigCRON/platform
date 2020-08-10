@@ -115,15 +115,18 @@ module tb;
 
     // ======== checkers ========
     reg [N-1:0] expected_dout;
+    wire        inr;
 
     always @(negedge ms_adc_sample)
     begin
         expected_dout = int'((vinp-vinn) * 2**N);
     end
     
+    assign inr = in_range(real'(dout), real'(expected_dout) - 1, real'(expected_dout) + 1);
+    
     always @(posedge clk)
     begin
-        if (eoc_it && !in_range(dout, expected_dout - 1, expected_dout + 1))
+        if (eoc_it && !inr)
             `log_ErrorF2("Wrong conversion result get [%x] expected [%x]", dout, expected_dout);
     end
 

@@ -22,6 +22,24 @@ module tb;
     real        vinn;
 
     // ======== stimuli ========
+    initial begin
+        tck   = 1'b0;
+        trstb = 1'b0;
+        #(50ns);
+        trstb = 1'b0;
+        repeat(8) @(posedge tck);
+        #(10us);
+        `log_Terminate;
+    end
+    
+    always forever begin
+        #(500ns) tck = !tck;
+    end
+    
+    initial begin
+        #(200us);
+        `log_Fatal("Unexpected timeout");
+    end
 
     // ======== dut ========
     dut dut (
