@@ -1,5 +1,13 @@
 `default_nettype none
 
+// ======== Resynchronization ========
+/*
+    reset_resync: async rstb -> sync srstb
+    dff_resync: basic signal resync
+    pulse_toggle: first part of toggle resync
+    pulse_resync: second part of toggle resync
+    bus_resync: recirculation mux
+*/
 module reset_resync #(
     parameter integer STAGES = 2
 ) (
@@ -39,6 +47,138 @@ module dff_resync #(
     buf g_o (out, resync[STAGES-1]);
 endmodule
 
+module pulse_toggle #(
+    parameter integer MODE = 0
+) (
+    input   wire    clk,
+    input   wire    rstb,
+    input   wire    in,
+    output  wire    out
+);
+
+    reg [2:0] resync;
+    wire      toggle;
+
+    generate
+        // both edges
+        if (MODE == 0)
+            assign toggle = resync[1] ^ resync[0];
+        // rising edge
+        else if (MODE == 1)
+            assign toggle = resync[0] & ~resync[1];
+        // falling edge
+        else
+            assign toogle = resync[1] & ~resync[0];
+    endgenerate
+
+    always @(posedge clk, negedge rstb)
+        if (!rstb)
+            resync <= 3'b000;
+        else if (toggle)
+            resync <= {~resync[2],resync[0], in};
+        else
+            resync <= {resync[2], resync[0], in};
+
+    buf g_o (out, resync[2]);
+
+endmodule
+
+module pulse_resync #(
+    parameter integer MODE   = 0,
+    parameter integer STAGES = 2
+) (
+    input   wire    clk,
+    input   wire    rstb,
+    input   wire    in,
+    output  wire    out
+);
+
+    reg [STAGES-1:0] resync;
+
+    always @(posedge clk, negedge rstb)
+        if (!rstb)
+            resync <= {STAGES{1'b0}};
+        else
+            resync <= {resync[STAGES-2:0], in};
+    
+    generate
+        // both edges
+        if (MODE == 0)
+            assign out = resync[STAGES-1] ^ resync[STAGES-2];
+        // rising edge
+        else if (MODE == 1)
+            assign out = resync[STAGES-2] & ~resync[STAGES-1];
+        // falling edge
+        else
+            assign out = resync[STAGES-1] & ~resync[STAGES-2];
+    endgenerate
+
+endmodule
+
+module bus_resync #(
+    parameter integer N      = 4,
+    parameter integer STAGES = 2
+) (
+    input   wire            clka,
+    input   wire            rsta,
+    input   wire            clkb,
+    input   wire            rstb,
+    input   wire [N-1:0]    in,
+    input   wire            valida,
+    input   wire            readyb,
+    output  reg  [N-1:0]    out,
+    output  wire            readya,
+    output  wire            validb
+);
+
+    wire tvalid;
+    wire tready;
+
+    pulse_toggle #(
+        .MODE   (1)
+    ) toggle_valid (
+        .clk    (clka),
+        .rstb   (rsta),
+        .in     (valida),
+        .out    (tvalid)
+    );
+
+    pulse_resync #(
+        .MODE   (1)
+    ) pulse_valid (
+        .clk    (clkb),
+        .rstb   (rstb),
+        .in     (tvalid),
+        .out    (validb)
+    );
+
+    pulse_toggle #(
+        .MODE   (1)
+    ) toggle_ready (
+        .clk    (clkb),
+        .rstb   (rstb),
+        .in     (readyb),
+        .out    (tready)
+    );
+
+    pulse_resync #(
+        .MODE   (1)
+    ) pulse_ready (
+        .clk    (clka),
+        .rstb   (rsta),
+        .in     (tready),
+        .out    (readya)
+    );
+
+    always @(posedge clkb, negedge rstb)
+        if (!rstb)
+            out <= {N{1'b0}};
+        else if (validb)
+            out <= in;
+
+endmodule
+
+// ======== clock selection ========
 module clock_mux #(
     parameter integer N = 2,
     parameter integer STAGES = 2
@@ -81,6 +221,10 @@ module clock_mux #(
     assign q = |(select_fo & clk);
 endmodule
 
+// ======== mix mode component ========
+/*
+    aio_blk_latch: block signal during atpg
+*/
 module aio_blk_latch #(
     parameter integer N = 4
 ) (
