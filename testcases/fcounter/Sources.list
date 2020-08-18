@@ -1,2 +1,4 @@
 tb.sv
 /designs/fcounter
+
+COV_MODULES=fcounter

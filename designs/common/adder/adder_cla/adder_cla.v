@@ -31,14 +31,12 @@ module adder_cla #(
     genvar k;
     genvar j;
     generate
-        for(k = 0; k < N; k = k + 1)
+        for(k = 0; k < N; k++)
         begin
             wire [k:0] c_w;
 
-            for(j = 0; j <= k; j = j + 1)
-            begin
+            for(j = 0; j <= k; j++)
                 assign c_w[j] = &p[k:j] & g_w[j];
-            end
 
             assign c[k] = (|c_w) | g_w[k+1];
         end
