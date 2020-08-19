@@ -1,0 +1,5 @@
+port.v
+ro_reg.v
+rw_reg.v
+rwe_reg.v
+wo1_reg.v
