@@ -19,13 +19,16 @@ module multiplier_comb_lane #(
 
     // ==== addition ====
     and g_a[N-1:0]  (b_i, {N{a}}, b);
-    xor g_pi[N-1:0] (p, a_i, b_i);
-    xor g_s[N-1:0]  (s, p, c[N-1:0]);
 
-    // ==== carry tree ====
-    assign c[0] = 1'b0;
-    assign c[N:1] = (a_i & b_i) | (a_i & c[N-1:0]) | (b_i & c[N-1:0]);
-    buf g_co (co, c[N]);
+    adder_cla #(
+        .N  (N)
+    ) add (
+        .a  (a_i),
+        .b  (b_i),
+        .ci (1'b0),
+        .s  (s),
+        .co (co)
+    );
 
 
 endmodule
