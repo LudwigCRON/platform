@@ -10,6 +10,7 @@ module dut (
     input   wire [15:0] wdata,
     input   wire [15:0] rwe_data,
     input   wire [15:0] ro_data,
+    input   wor  [15:0] rdata,
 
     output  wire [15:0] q_none,
     output  wire [15:0] q_ro1,
@@ -39,7 +40,7 @@ module dut (
     );
 
     port #(
-        .RO_MASK    (16'hF421),
+        .RO_MASK    (16'hF421)
     ) port_ro_1 (
         .clk        (clk),
         .rstb       (rstb),
@@ -54,7 +55,7 @@ module dut (
     );
 
     port #(
-        .RO_MASK    (16'h0BDE),
+        .RO_MASK    (16'h0BDE)
     ) port_ro_2 (
         .clk        (clk),
         .rstb       (rstb),
@@ -101,7 +102,7 @@ module dut (
     );
 
     port #(
-        .RW_MASK    (16'h00AA),
+        .RW_MASK    (16'h00AA)
     ) port_rw_3 (
         .clk        (clk),
         .rstb       (rstb),
@@ -148,7 +149,7 @@ module dut (
     );
 
     port #(
-        .RWE_MASK   (16'h00AA),
+        .RWE_MASK   (16'h00AA)
     ) port_rwe_3 (
         .clk        (clk),
         .rstb       (rstb),

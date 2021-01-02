@@ -1,5 +1,7 @@
 
 `ifndef NO_HELPER
+    
+    `include "log.svh"
 
     logic verbose;
     logic [DATA_WIDTH-1:0] bkp_rdata;

@@ -7,3 +7,5 @@
 .DS_Store
 # gtkwave view
 *.gtkw
+# reflow db files
+.doit.db

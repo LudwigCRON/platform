@@ -43,7 +43,7 @@ module port #(
     generate
         for(gi = 0; gi < 16; gi++)
         begin
-            if (RO[gi])
+            if (RO_MASK[gi])
             begin
                 ro_reg ro_r (
                     .clk    (clk),
@@ -52,7 +52,7 @@ module port #(
                     .in     (ro_data[gi]),
                     .ro     (rdata[gi])
                 );
-            end else if (RW[gi])
+            end else if (RW_MASK[gi])
             begin
                 rw_reg rw_r (
                     .clk    (clk),
@@ -64,7 +64,7 @@ module port #(
                     .ro     (rdata[gi]),
                     .q      (internal_q[gi])
                 );
-            end else if (RWE[gi])
+            end else if (RWE_MASK[gi])
             begin
                 rwe_reg rwe_r (
                     .clk    (clk),
@@ -78,7 +78,7 @@ module port #(
                     .ro     (rdata[gi]),
                     .q      (internal_q[gi])
                 );
-            end else if (WO1[gi])
+            end else if (WO1_MASK[gi])
             begin
                 wo1_reg wo1_r (
                     .clk    (clk),

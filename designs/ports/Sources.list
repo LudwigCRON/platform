@@ -1,4 +1,5 @@
-port.v
+port.v:
+    port_functions.vh
 ro_reg.v
 rw_reg.v
 rwe_reg.v
